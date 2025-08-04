@@ -1,0 +1,73 @@
+name: Auto Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Install Buildozer
+      run: |
+        pip install buildozer
+        
+    - name: Install System Deps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y autoconf automake libtool pkg-config libffi-dev libssl-dev build-essential openjdk-8-jdk python3-dev libncursesw5-dev libsqlite3-dev
+        
+    - name: Create App Files
+      run: |
+        echo '[app]' > buildozer.spec
+        echo 'title = GameAnalyzer' >> buildozer.spec
+        echo 'package.name = gameanalyzer' >> buildozer.spec
+        echo 'package.domain = org.test' >> buildozer.spec
+        echo 'source.dir = .' >> buildozer.spec
+        echo 'source.include_exts = py,png,jpg,kv,atlas,json' >> buildozer.spec
+        echo 'version = 1.0' >> buildozer.spec
+        echo 'requirements = python3,kivy,numpy,matplotlib,pillow' >> buildozer.spec
+        echo 'orientation = portrait' >> buildozer.spec
+        echo 'fullscreen = 0' >> buildozer.spec
+        echo 'android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE' >> buildozer.spec
+        echo 'android.arch = armeabi-v7a' >> buildozer.spec
+        
+        # Create main.py (paste the app code here)
+        cat > main.py << 'EOF'
+        [PASTE KODE APLIKASI DI SINI]
+        EOF
+        
+    - name: Build APK
+      run: |
+        buildozer android debug
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: game-analyzer-apk
+        path: bin/*.apk
+        
+    - name: Send Email
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{secrets.EMAIL}}
+        password: ${{secrets.PASSWORD}}
+        to: triyudiirawan1922@gmail.com
+        subject: APK Build Completed - ${{github.run_number}}
+        body: |
+          APK build completed successfully!
+          
+          Download from: ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}
+        attachments: bin/*.apk
